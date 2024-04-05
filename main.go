@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	for range time.Tick(time.Second) {
+	for range time.Tick(time.Minute) {
 		fmt.Println("Hello world!")
 	}
 }
