@@ -10,7 +10,7 @@ import (
 
 func main() {
 	s := &http.Server{
-		Addr:           "fly-local-6pn:8080",
+		Addr:           "::8080",
 		Handler:        HelloHandler{},
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
