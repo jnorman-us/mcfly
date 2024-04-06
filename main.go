@@ -1,27 +1,48 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"html"
-	"log"
-	"net/http"
-	"time"
+	"os"
+
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
+	"github.com/jnorman-us/mcfly/env"
+	"github.com/jnorman-us/mcfly/fly"
+	"github.com/jnorman-us/mcfly/mcproxy"
+	"github.com/jnorman-us/mcfly/mcserver"
+	jconfig "go.minekube.com/gate/pkg/edition/java/config"
+	"go.minekube.com/gate/pkg/edition/java/proxy"
+	"go.minekube.com/gate/pkg/gate"
+	"go.minekube.com/gate/pkg/gate/config"
+	"go.uber.org/zap"
 )
 
+var default_config = config.DefaultConfig
+
 func main() {
-	s := &http.Server{
-		Addr:           ":8080",
-		Handler:        HelloHandler{},
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
-	log.Fatal(s.ListenAndServe())
-}
+	ctx := context.Background()
 
-type HelloHandler struct{}
+	cfg := env.Config{}
+	cfg.FlyToken = os.Getenv(env.KeyFlyToken)
+	cfg.FlyApp = "mcfly"
 
-func (h HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Handling connection from %s\n", r.Host)
-	fmt.Fprintf(w, "Hello, %s, welcome to %q", r.Host, html.EscapeString(r.URL.Path))
+	client := fly.NewFlyClient(cfg)
+	manager := mcserver.NewCloudServerManager(client)
+
+	zapLogger := zap.Must(zap.NewDevelopment())
+	ctx = logr.NewContext(ctx, zapr.NewLogger(zapLogger))
+
+	proxy.Plugins = append(proxy.Plugins, proxy.Plugin{
+		Name: "MCFlyProxy",
+		Init: func(ctx context.Context, proxy *proxy.Proxy) error {
+			return mcproxy.NewMCProxy(proxy, manager).Init(ctx)
+		},
+	})
+
+	default_config.Config.Forwarding.Mode = jconfig.NoneForwardingMode
+	default_config.Config.OnlineMode = false
+
+	fmt.Println(default_config.Validate())
+	gate.Start(ctx, gate.WithConfig(default_config))
 }
