@@ -1,6 +1,9 @@
 package wirefmt
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type FlyError struct {
 	ErrorString string `json:"error"`
@@ -11,10 +14,5 @@ func (e FlyError) Error() string {
 	return fmt.Sprintf("flyerr: %s (Status %s)", e.ErrorString, e.Status)
 }
 
-type ErrorBadRequest struct {
-	FlyError
-}
-
-type ErrorTimedOut struct {
-	FlyError
-}
+var ErrorBadRequest = errors.New("err 400")
+var ErrorTimedOut = errors.New("err 408")

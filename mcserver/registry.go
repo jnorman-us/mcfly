@@ -2,17 +2,17 @@ package mcserver
 
 import (
 	"context"
-	"net"
+	"fmt"
 
+	"github.com/go-logr/logr"
 	"github.com/jnorman-us/mcfly/fly/cloud"
 	"github.com/jnorman-us/mcfly/fly/wirefmt"
-	"github.com/jnorman-us/mcfly/mcserver/config"
 	"github.com/jnorman-us/mcfly/mcserver/manager"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
 var default_servers = map[string]Server{
-	"vanilla": NewServer(config.ServerConfig{
+	"vanilla": Server{
 		Name: "vanilla",
 		Whitelist: []string{
 			"Wine_Craft",
@@ -22,7 +22,7 @@ var default_servers = map[string]Server{
 		StorageGB: 5,
 
 		Image: "itzg/minecraft-server:latest",
-	}),
+	},
 }
 
 type CloudServerManager struct {
@@ -51,10 +51,56 @@ func (m *CloudServerManager) CheckUserAuthorized(name string, username string) e
 	}
 }
 
-func (m *CloudServerManager) PrepareServer(ctx context.Context, registry proxy.ServerRegistry, serverName string) error {
-	addr, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:25566")
-	registry.Register(proxy.NewServerInfo("vanilla", addr))
+func (m *CloudServerManager) PrepareServer(ctx context.Context, registry proxy.ServerRegistry, name string) error {
+	log := logr.FromContextOrDiscard(ctx).WithValues(
+		"server", name,
+	)
+
+	var s, _ = m.servers[name]
+
+	volume, err := m.prepareVolume(ctx, s)
+	if err != nil {
+		return fmt.Errorf("%w: %w", manager.ErrorCloud, err)
+	}
+
+	log.V(1).Info("Proceeding with volume", "volume", volume)
+
 	return nil
+}
+
+func (m *CloudServerManager) prepareVolume(ctx context.Context, s Server) (*wirefmt.Volume, error) {
+	log := logr.FromContextOrDiscard(ctx).WithValues(
+		"server", s.Name,
+	)
+
+	// verify volume exists
+	volumes, err := m.cloud.ListVolumes(ctx)
+	if err != nil {
+		return nil, err
+	}
+	log.V(1).Info("Listed volumes in cloud", "volumes", volumes)
+	for _, v := range volumes {
+		// filter out unusable volumes
+		if v.State != wirefmt.VolumeStateCreated {
+			continue
+		}
+
+		if v.Name == s.Name {
+			return &v, nil
+		}
+	}
+
+	// create nonexistent volume
+	input := s.CreateVolumeInput()
+	log.V(1).Info("Creating volume in cloud", "input", input)
+
+	output, err := m.cloud.CreateVolume(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	volume := wirefmt.Volume(*output)
+	return &volume, nil
 }
 
 func (m *CloudServerManager) VerifyServer(ctx context.Context, serverName string) error {

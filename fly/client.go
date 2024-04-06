@@ -12,6 +12,7 @@ import (
 
 type FlyClient struct {
 	client *resty.Client
+	region string
 }
 
 func NewFlyClient(cfg env.Config) *FlyClient {
@@ -21,7 +22,8 @@ func NewFlyClient(cfg env.Config) *FlyClient {
 	client.SetHostURL(fmt.Sprintf("https://api.machines.dev/v1/apps/%s/", cfg.FlyApp))
 
 	return &FlyClient{
-		client,
+		client: client,
+		region: "ewr",
 	}
 }
 
@@ -29,13 +31,13 @@ var ErrorStrange = errors.New("response does not conform to spec")
 
 func handleError(statusCode int, respErr any) error {
 	if flyErr, ok := respErr.(*wirefmt.FlyError); ok {
-		var err = *flyErr
+		var err = error(flyErr)
 		if statusCode == http.StatusBadRequest {
-			return wirefmt.ErrorBadRequest{FlyError: err}
+			return fmt.Errorf("%w: %w", wirefmt.ErrorBadRequest, err)
 		}
 		if statusCode == http.StatusRequestTimeout {
-			return wirefmt.ErrorTimedOut{FlyError: err}
+			return fmt.Errorf("%w: %w", wirefmt.ErrorTimedOut, err)
 		}
 	}
-	return ErrorStrange
+	return fmt.Errorf("%w: (%d) %v", ErrorStrange, statusCode, respErr)
 }

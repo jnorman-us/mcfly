@@ -3,19 +3,19 @@ package mcserver
 import (
 	"fmt"
 
+	"github.com/jnorman-us/mcfly/fly/wirefmt"
 	"github.com/jnorman-us/mcfly/mcserver/config"
 )
 
-type Server struct {
-	config.ServerConfig
-}
+type Server config.ServerConfig
 
-func NewServer(cfg config.ServerConfig) Server {
-	return Server{
-		ServerConfig: cfg,
-	}
-}
-
-func (s *Server) Host() string {
+func (s Server) Host() string {
 	return fmt.Sprintf("%s.vm.mcfly.internal", s.Name)
+}
+
+func (s Server) CreateVolumeInput() wirefmt.CreateVolumeInput {
+	return wirefmt.CreateVolumeInput{
+		Name:   s.Name,
+		SizeGB: s.StorageGB,
+	}
 }
