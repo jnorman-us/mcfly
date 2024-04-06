@@ -9,5 +9,5 @@ import (
 type ServerManager interface {
 	CheckUserAuthorized(string, string) error
 
-	PrepareServer(context.Context, proxy.ServerRegistry, string) error
+	StartServer(context.Context, proxy.ServerRegistry, string) error
 }

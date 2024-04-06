@@ -21,6 +21,8 @@ var default_config = config.DefaultConfig
 
 func main() {
 	ctx := context.Background()
+	zapLogger := zap.Must(zap.NewDevelopment())
+	ctx = logr.NewContext(ctx, zapr.NewLogger(zapLogger))
 
 	cfg := env.Config{}
 	cfg.FlyToken = os.Getenv(env.KeyFlyToken)
@@ -29,8 +31,7 @@ func main() {
 	client := fly.NewFlyClient(cfg)
 	manager := mcserver.NewCloudServerManager(client)
 
-	zapLogger := zap.Must(zap.NewDevelopment())
-	ctx = logr.NewContext(ctx, zapr.NewLogger(zapLogger))
+	manager.Initialize(ctx)
 
 	proxy.Plugins = append(proxy.Plugins, proxy.Plugin{
 		Name: "MCFlyProxy",
@@ -41,8 +42,5 @@ func main() {
 
 	default_config.Editions.Java.Config.Forwarding.Mode = jconfig.NoneForwardingMode
 	default_config.Editions.Java.Config.OnlineMode = false
-
-	// default_config.Config.Servers["vanilla"] = "127.0.0.1:25566"
-
 	gate.Start(ctx, gate.WithConfig(default_config))
 }

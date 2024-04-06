@@ -7,6 +7,7 @@ import (
 )
 
 type CloudClient interface {
+	ListMachines(context.Context) (wirefmt.ListMachinesOutput, error)
 	CreateMachine(context.Context, wirefmt.CreateMachineInput) (*wirefmt.CreateMachineOutput, error)
 
 	ListVolumes(context.Context) (wirefmt.ListVolumesOutput, error)

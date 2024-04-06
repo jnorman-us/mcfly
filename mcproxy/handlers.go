@@ -23,7 +23,7 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 		return
 	}
 
-	err = p.servers.PrepareServer(ctx, p, "vanilla")
+	err = p.servers.StartServer(ctx, p, "vanilla")
 	if err != nil {
 		log.Error(err, "Problem preparing server")
 		e.Deny(nil)
