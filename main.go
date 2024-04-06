@@ -22,5 +22,6 @@ func main() {
 type HelloHandler struct{}
 
 func (h HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))
+	fmt.Printf("Handling connection from %s\n", r.Host)
+	fmt.Fprintf(w, "Hello, %s, welcome to %q", r.Host, html.EscapeString(r.URL.Path))
 }
