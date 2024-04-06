@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -40,9 +39,10 @@ func main() {
 		},
 	})
 
-	default_config.Config.Forwarding.Mode = jconfig.NoneForwardingMode
-	default_config.Config.OnlineMode = false
+	default_config.Editions.Java.Config.Forwarding.Mode = jconfig.NoneForwardingMode
+	default_config.Editions.Java.Config.OnlineMode = false
 
-	fmt.Println(default_config.Validate())
+	// default_config.Config.Servers["vanilla"] = "127.0.0.1:25566"
+
 	gate.Start(ctx, gate.WithConfig(default_config))
 }
