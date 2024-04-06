@@ -16,3 +16,4 @@ func (e FlyError) Error() string {
 
 var ErrorBadRequest = errors.New("err 400")
 var ErrorTimedOut = errors.New("err 408")
+var ErrorNotAuthorized = errors.New("err 401")

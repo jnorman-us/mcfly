@@ -38,6 +38,9 @@ func handleError(statusCode int, respErr any) error {
 		if statusCode == http.StatusRequestTimeout {
 			return fmt.Errorf("%w: %w", wirefmt.ErrorTimedOut, err)
 		}
+		if statusCode == http.StatusUnauthorized {
+			return fmt.Errorf("%w: %w", wirefmt.ErrorNotAuthorized, err)
+		}
 	}
 	return fmt.Errorf("%w: (%d) %v", ErrorStrange, statusCode, respErr)
 }
