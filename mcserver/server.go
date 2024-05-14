@@ -2,6 +2,7 @@ package mcserver
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/jnorman-us/mcfly/fly/wirefmt"
 	"github.com/jnorman-us/mcfly/mcserver/config"
@@ -13,8 +14,8 @@ type Server struct {
 	MachineID string
 }
 
-func (s Server) Host() string {
-	return fmt.Sprintf("%s.vm.mcfly.internal", s.Name)
+func (s Server) Host() (net.Addr, error) {
+	return net.ResolveTCPAddr("tcp", fmt.Sprintf("%s.vm.mcfly.internal:25565", s.MachineID))
 }
 
 func (s Server) CreateVolumeInput() wirefmt.CreateVolumeInput {
@@ -39,6 +40,8 @@ func (s Server) CreateMachineInput() wirefmt.CreateMachineInput {
 				Volume: s.VolumeID,
 				Path:   "/data",
 			}},
+			Restart: s.Restart,
+			Env:     s.Env,
 		},
 	}
 }

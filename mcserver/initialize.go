@@ -32,7 +32,7 @@ func (m *CloudServerManager) Initialize(ctx context.Context) {
 	).Info("Retrieved existing infrastructure")
 
 	for _, server := range m.servers {
-		if err := m.prepareServer(ctx, &server, existVols, existMachines); err != nil {
+		if err := m.prepareServer(ctx, server, existVols, existMachines); err != nil {
 			log.Error(err, "Failed to prepare server", "server", server.Name)
 		}
 	}

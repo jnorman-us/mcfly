@@ -5,6 +5,8 @@ import (
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
+const VANILLA = "vanilla"
+
 // HandlePreLogin is called when a player connects to the
 // proxy. We can take as much time as needed to spin up
 // the server if needed.
@@ -16,14 +18,14 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 	)
 	ctx = logr.NewContext(ctx, log)
 
-	err := p.servers.CheckUserAuthorized("vanilla", e.Username())
+	err := p.servers.CheckUserAuthorized(VANILLA, e.Username())
 	if err != nil {
 		log.Error(err, "Unauthorized login")
 		e.Deny(nil)
 		return
 	}
 
-	err = p.servers.StartServer(ctx, p, "vanilla")
+	err = p.servers.StartServer(ctx, p, VANILLA)
 	if err != nil {
 		log.Error(err, "Problem preparing server")
 		e.Deny(nil)
@@ -34,13 +36,26 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 	e.Allow()
 }
 
+func (p *MCProxy) HandleLogin(e *proxy.LoginEvent) {
+	ctx := e.Player().Context()
+	log := logr.FromContextOrDiscard(ctx)
+
+	log.WithValues(
+		"player", e.Player(),
+	).Info("LoginEvent")
+	e.Allow()
+}
+
 // HandlePlayerChooseInitialServer quickly selects the server
 // for the user (expects server to be in registry, else fails)
 func (p *MCProxy) HandlePlayerChooseInitialServer(e *proxy.PlayerChooseInitialServerEvent) {
 	ctx := e.Player().Context()
 	log := logr.FromContextOrDiscard(ctx)
 
-	e.SetInitialServer(p.Server("vanilla"))
+	log.WithValues(
+		"vanilla_server", p.Server(VANILLA),
+	).Info("ARE WE CHOOSING?")
+	e.SetInitialServer(p.Server(VANILLA))
 
 	log.Info("Hello")
 }

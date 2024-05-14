@@ -19,9 +19,12 @@ type Machine struct {
 }
 
 type MachineConfig struct {
-	Image  string  `json:"image"`
-	Guest  Guest   `json:"guest"`
-	Mounts []Mount `json:"mounts"`
+	Image   string  `json:"image"`
+	Guest   Guest   `json:"guest"`
+	Mounts  []Mount `json:"mounts"`
+	Restart Restart `json:"restart"`
+
+	Env map[string]string `json:"env"`
 }
 
 type Guest struct {
@@ -34,4 +37,13 @@ type Mount struct {
 	Name   string `json:"name"`
 	Volume string `json:"volume"`
 	Path   string `json:"path"`
+}
+
+const RestartPolicyNo = "no"
+const RestartPolicyAlways = "always"
+const RestartPolicyOnFailure = "on-failure"
+
+type Restart struct {
+	MaxRetries int    `json:"max_retries"`
+	Policy     string `json:"policy"`
 }

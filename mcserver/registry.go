@@ -2,6 +2,7 @@ package mcserver
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/jnorman-us/mcfly/fly/cloud"
@@ -11,7 +12,7 @@ import (
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
-var default_servers = map[string]Server{
+var default_servers = map[string]*Server{
 	"vanilla": {
 		ServerConfig: config.ServerConfig{
 			Name: "vanilla",
@@ -20,16 +21,25 @@ var default_servers = map[string]Server{
 			},
 			CPUKind:   wirefmt.CPUKindShared,
 			CPUs:      1,
-			MemoryMB:  1024,
+			MemoryMB:  2048,
 			StorageGB: 5,
 
 			Image: "itzg/minecraft-server:latest",
+
+			Restart: wirefmt.Restart{
+				Policy: wirefmt.RestartPolicyNo,
+			},
+			Env: map[string]string{
+				"EULA":        "TRUE",
+				"VERSION":     "1.20.4",
+				"ONLINE_MODE": "FALSE",
+			},
 		},
 	},
 }
 
 type CloudServerManager struct {
-	servers map[string]Server
+	servers map[string]*Server
 	cloud   cloud.CloudClient
 }
 
@@ -38,6 +48,47 @@ func NewCloudServerManager(cc cloud.CloudClient) *CloudServerManager {
 		servers: default_servers,
 		cloud:   cc,
 	}
+}
+
+func (m *CloudServerManager) FindCloudResources(ctx context.Context) error {
+	log := logr.FromContextOrDiscard(ctx)
+
+	log.V(1).Info("Collecting existing infrastructure")
+	volumesList, err := m.cloud.ListVolumes(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list volumes: %w", err)
+	}
+	machinesList, err := m.cloud.ListMachines(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list machines: %w", err)
+	}
+	existVols := filterVolumes(volumesList)
+	existMachines := filterMachines(machinesList)
+	log.V(1).WithValues(
+		"volumes", existVols,
+		"machines", existMachines,
+	).Info("Retrieved existing infrastructure")
+
+	for _, server := range m.servers {
+		name := server.Name
+
+		vol, ok := existVols[name]
+		if !ok {
+			return fmt.Errorf("missing volume for %s", name)
+		}
+		server.VolumeID = vol.ID
+
+		machine, ok := existMachines[name]
+		if !ok {
+			return fmt.Errorf("missing machine for %s", name)
+		}
+		server.MachineID = machine.ID
+	}
+
+	log.V(1).WithValues(
+		"servers", m.servers,
+	).Info("Infrastructure found for servers")
+	return nil
 }
 
 func (m *CloudServerManager) CheckUserAuthorized(name string, username string) error {
@@ -58,6 +109,15 @@ func (m *CloudServerManager) StartServer(ctx context.Context, registry proxy.Ser
 	log := logr.FromContextOrDiscard(ctx).WithValues(
 		"server", name,
 	)
+
+	server := m.servers["vanilla"]
+
+	host, err := server.Host()
+	if err != nil {
+		return fmt.Errorf("failed to parse host: %w", err)
+	}
+
+	registry.Register(proxy.NewServerInfo(server.Name, host))
 
 	log.Info("Starting server!")
 
