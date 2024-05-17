@@ -33,7 +33,7 @@ func (m *CloudServerManager) Initialize(ctx context.Context) {
 
 	for _, server := range m.servers {
 		if err := m.prepareServer(ctx, server, existVols, existMachines); err != nil {
-			log.Error(err, "Failed to prepare server", "server", server.Name)
+			log.Error(err, "Failed to prepare server", "server", server.Name())
 		}
 	}
 }
@@ -44,11 +44,11 @@ func (m *CloudServerManager) prepareServer(
 	volumes map[string]wirefmt.Volume,
 	machines map[string]wirefmt.Machine,
 ) error {
-	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name)
+	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name())
 
-	log.V(1).Info("Preparing server", "server", s.Name)
+	log.V(1).Info("Preparing server", "server", s.Name())
 
-	if volume, ok := volumes[s.Name]; ok {
+	if volume, ok := volumes[s.Name()]; ok {
 		log.V(1).Info("Found existing volume")
 		s.VolumeID = volume.ID
 	} else {
@@ -60,7 +60,7 @@ func (m *CloudServerManager) prepareServer(
 		s.VolumeID = volume.ID
 	}
 
-	if machine, ok := machines[s.Name]; ok {
+	if machine, ok := machines[s.Name()]; ok {
 		log.V(1).Info("Found existing machine")
 		s.MachineID = machine.ID
 	} else {
@@ -76,7 +76,7 @@ func (m *CloudServerManager) prepareServer(
 }
 
 func (m *CloudServerManager) prepareVolume(ctx context.Context, s *Server) (*wirefmt.Volume, error) {
-	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name)
+	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name())
 
 	input := s.CreateVolumeInput()
 	log.Info("Creating volume in cloud...", "input", input)
@@ -91,7 +91,7 @@ func (m *CloudServerManager) prepareVolume(ctx context.Context, s *Server) (*wir
 }
 
 func (m *CloudServerManager) prepareMachine(ctx context.Context, s *Server) (*wirefmt.Machine, error) {
-	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name)
+	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name())
 
 	// create nonexistent machine
 	input := s.CreateMachineInput()

@@ -22,7 +22,7 @@ var initializeCmd = &cobra.Command{
 		cfg := parseConfig()
 
 		client := fly.NewFlyClient(cfg)
-		manager := mcserver.NewCloudServerManager(client)
+		manager := mcserver.NewCloudServerManager(client, nil)
 
 		manager.Initialize(ctx)
 	},

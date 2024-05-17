@@ -7,16 +7,25 @@ type CreateMachineInput struct {
 
 	Name   string `json:"name"`
 	Region string `json:"region"`
+
+	SkipLaunch bool `json:"skip_launch"`
 }
 
 type CreateMachineOutput Machine
+type GetMachineOutput Machine
 
 type Machine struct {
 	MachineConfig `json:"config"`
 
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	State     string `json:"state"`
+	PrivateIP string `json:"private_ip"`
 }
+
+const MachineStateStarted = "started"
+const MachineStateStopped = "stopped"
+const MachineStateDestroyed = "destroyed"
 
 type MachineConfig struct {
 	Image   string  `json:"image"`

@@ -15,6 +15,7 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 	log := logr.FromContextOrDiscard(ctx)
 	log = log.WithValues(
 		"username", e.Username(),
+		"server", VANILLA,
 	)
 	ctx = logr.NewContext(ctx, log)
 
@@ -25,14 +26,27 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 		return
 	}
 
-	err = p.servers.StartServer(ctx, p, VANILLA)
+	running, err := p.servers.GetRunningServer(ctx, VANILLA)
+	if err != nil {
+		log.Error(err, "Problem getting running server")
+		e.Deny(nil)
+		return
+	}
+	if running != nil {
+		log.V(1).Info("Server running, allowing connection")
+		e.Allow()
+		return
+	}
+
+	log.Info("Server not running, starting...")
+	err = p.servers.StartServer(ctx, VANILLA)
 	if err != nil {
 		log.Error(err, "Problem preparing server")
 		e.Deny(nil)
 		return
 	}
 
-	log.Info("Allowing connection")
+	log.Info("Server started, allowing connection")
 	e.Allow()
 }
 
@@ -81,13 +95,19 @@ func (p *MCProxy) HandlePlayerConnected(e *proxy.ServerPostConnectEvent) {
 // Least we can do is remove the server from the registry, though we
 // might need to mark it as Do Not Resuscitate
 func (p *MCProxy) HandlePlayerKicked(e *proxy.KickedFromServerEvent) {
-	ctx := e.Player().Context()
-	log := logr.FromContextOrDiscard(ctx)
+	// ctx := e.Player().Context()
+	// log := logr.FromContextOrDiscard(ctx)
 
-	log = log.WithValues(
-		"server_addr", e.Server().ServerInfo().Addr().String(),
-	)
-	log.Info("Kicked JOSEPH")
+	// log = log.WithValues(
+	// 	"player", e.Player().GameProfile().Name,
+	// 	"server", VANILLA,
+	// )
+
+	// log.WithValues("e", e.KickedDuringServerConnect(), "t", e.OriginalReason()).Info("Test")
+	// if e.KickedDuringServerConnect() {
+	// 	log.Info("Player could not connect to upstream, marking as halted...")
+	// 	p.servers.MarkServerHalted(ctx, VANILLA)
+	// }
 }
 
 // HandlePlayerDisconnected is called when the player disconnects from
@@ -99,7 +119,12 @@ func (p *MCProxy) HandlePlayerDisconnected(e *proxy.DisconnectEvent) {
 
 	log = log.WithValues(
 		"username", e.Player().Username(),
-		"host", e.Player().VirtualHost().String(),
+		"server", VANILLA,
 	)
 	log.Info("Player has disconnected")
+
+	//err := p.servers.StopServer(ctx, VANILLA)
+	//if err != nil {
+	//	log.Error(err, "Problem stopping server")
+	//}
 }

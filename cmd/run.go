@@ -27,18 +27,17 @@ var runCmd = &cobra.Command{
 		ctx = logr.NewContext(ctx, zapr.NewLogger(zapLogger))
 
 		cfg := parseConfig()
-
 		client := fly.NewFlyClient(cfg)
-		manager := mcserver.NewCloudServerManager(client)
-
-		err := manager.FindCloudResources(ctx)
-		if err != nil {
-			zapLogger.Panic("Problem finding existing cloud resources", zap.Error(err))
-		}
 
 		proxy.Plugins = append(proxy.Plugins, proxy.Plugin{
 			Name: "MCFlyProxy",
 			Init: func(ctx context.Context, proxy *proxy.Proxy) error {
+				manager := mcserver.NewCloudServerManager(client, proxy)
+
+				err := manager.FindCloudResources(ctx)
+				if err != nil {
+					zapLogger.Panic("Problem finding existing cloud resources", zap.Error(err))
+				}
 				return mcproxy.NewMCProxy(proxy, manager).Init(ctx)
 			},
 		})

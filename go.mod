@@ -4,6 +4,7 @@ go 1.22.2
 
 require (
 	buf.build/gen/go/minekube/connect/protocolbuffers/go v1.33.0-20240220124425-904ce30425c9.1 // indirect
+	github.com/Raqbit/mc-pinger v0.2.4 // indirect
 	github.com/Tnze/go-mc v1.20.2-0.20231123224931-bc3d77d78437 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect

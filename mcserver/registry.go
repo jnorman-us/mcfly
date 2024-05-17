@@ -3,6 +3,7 @@ package mcserver
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/go-logr/logr"
 	"github.com/jnorman-us/mcfly/fly/cloud"
@@ -39,14 +40,16 @@ var default_servers = map[string]*Server{
 }
 
 type CloudServerManager struct {
-	servers map[string]*Server
-	cloud   cloud.CloudClient
+	servers  map[string]*Server
+	registry proxy.ServerRegistry
+	cloud    cloud.CloudClient
 }
 
-func NewCloudServerManager(cc cloud.CloudClient) *CloudServerManager {
+func NewCloudServerManager(cc cloud.CloudClient, r proxy.ServerRegistry) *CloudServerManager {
 	return &CloudServerManager{
-		servers: default_servers,
-		cloud:   cc,
+		servers:  default_servers,
+		cloud:    cc,
+		registry: r,
 	}
 }
 
@@ -70,7 +73,7 @@ func (m *CloudServerManager) FindCloudResources(ctx context.Context) error {
 	).Info("Retrieved existing infrastructure")
 
 	for _, server := range m.servers {
-		name := server.Name
+		name := server.Name()
 
 		vol, ok := existVols[name]
 		if !ok {
@@ -83,6 +86,11 @@ func (m *CloudServerManager) FindCloudResources(ctx context.Context) error {
 			return fmt.Errorf("missing machine for %s", name)
 		}
 		server.MachineID = machine.ID
+		server.PrivateHost = machine.PrivateIP
+		server.PrivateAddr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf("[%s]:25565", machine.PrivateIP))
+		if err != nil {
+			return fmt.Errorf("failed to parse private address for %s: %w", machine.ID, err)
+		}
 	}
 
 	log.V(1).WithValues(
@@ -105,23 +113,82 @@ func (m *CloudServerManager) CheckUserAuthorized(name string, username string) e
 	}
 }
 
-func (m *CloudServerManager) StartServer(ctx context.Context, registry proxy.ServerRegistry, name string) error {
+func (m *CloudServerManager) GetRunningServer(ctx context.Context, name string) (proxy.RegisteredServer, error) {
+	server := m.servers[name]
 	log := logr.FromContextOrDiscard(ctx).WithValues(
-		"server", name,
+		"machine_id", server.MachineID,
 	)
 
-	server := m.servers["vanilla"]
-
-	host, err := server.Host()
+	log.V(1).Info("Getting machine status")
+	machine, err := m.cloud.GetMachine(ctx, server.MachineID)
 	if err != nil {
-		return fmt.Errorf("failed to parse host: %w", err)
+		return nil, err
 	}
 
-	registry.Register(proxy.NewServerInfo(server.Name, host))
+	log.V(1).WithValues(
+		"state", machine.State,
+	).Info("Got machine status")
 
-	log.Info("Starting server!")
+	if machine.State != wirefmt.MachineStateStarted {
+		m.registry.Unregister(server)
+		return nil, nil
+	}
 
+	registered := m.registry.Server(name)
+	if registered != nil {
+		log.V(1).Info("Server already registered")
+		return registered, nil
+	}
+
+	log.V(1).Info("Registering server")
+	registered, _ = m.registry.Register(server)
+	log.WithValues("registered", registered).Info("Registered server")
+	return registered, nil
+}
+
+func (m *CloudServerManager) StartServer(ctx context.Context, name string) error {
+	log := logr.FromContextOrDiscard(ctx)
+	server := m.servers[name]
+
+	log.V(1).WithValues(
+		"machine_id", server.MachineID,
+	).Info("Starting machine")
+
+	err := m.cloud.StartMachine(ctx, server.MachineID)
+	if err != nil {
+		return fmt.Errorf("failed to start machine: %w", err)
+	}
+
+	host := server.Addr()
+	log.V(1).WithValues(
+		"host", host,
+	).Info("Registering server")
+
+	_, err = m.registry.Register(server)
+	return err
+}
+
+func (m *CloudServerManager) StopServer(ctx context.Context, name string) error {
+	log := logr.FromContextOrDiscard(ctx)
+	server := m.servers[name]
+
+	log.V(1).WithValues(
+		"machine_id", server.MachineID,
+	).Info("Stopping machine")
+
+	err := m.cloud.StopMachine(ctx, server.MachineID)
+	if err != nil {
+		return fmt.Errorf("failed to stop machine: %w", err)
+	}
+
+	m.registry.Unregister(server)
 	return nil
+}
+
+func (m *CloudServerManager) MarkServerHalted(ctx context.Context, name string) {
+	server := m.servers[name]
+
+	m.registry.Unregister(server)
 }
 
 func (m *CloudServerManager) VerifyServer(ctx context.Context, serverName string) error {
