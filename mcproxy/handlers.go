@@ -1,7 +1,10 @@
 package mcproxy
 
 import (
+	"errors"
+
 	"github.com/go-logr/logr"
+	"github.com/jnorman-us/mcfly/mcserver/manager"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
@@ -26,52 +29,47 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 		return
 	}
 
-	running, err := p.servers.GetRunningServer(ctx, VANILLA)
-	if err != nil {
-		log.Error(err, "Problem getting running server")
-		e.Deny(nil)
-		return
-	}
-	if running != nil {
-		log.V(1).Info("Server running, allowing connection")
+	err = p.servers.CheckServerReady(ctx, VANILLA)
+	if err == nil {
+		p.servers.MarkServerReady(VANILLA)
 		e.Allow()
 		return
 	}
 
-	log.Info("Server not running, starting...")
-	err = p.servers.StartServer(ctx, VANILLA)
+	err = p.servers.CheckServerStarted(ctx, VANILLA)
+	log.WithValues("TEST_ERR", err).Info("HELLO")
+	if errors.Is(err, manager.ErrorCloud) {
+		log.Error(err, "Problem checking if server started")
+		e.Deny(nil)
+		return
+	}
+	if errors.Is(err, manager.ErrorServerNotStarted) {
+		log.Info("Server not running, starting...")
+		err = p.servers.StartServer(ctx, VANILLA)
+		if err != nil {
+			log.Error(err, "Problem starting server")
+			e.Deny(nil)
+			return
+		}
+	}
+
+	log.Info("Waiting for server...")
+	err = p.servers.WaitForServer(ctx, VANILLA)
 	if err != nil {
-		log.Error(err, "Problem preparing server")
+		log.Error(err, "Server failed to respond in time")
 		e.Deny(nil)
 		return
 	}
 
-	log.Info("Server started, allowing connection")
-	e.Allow()
-}
-
-func (p *MCProxy) HandleLogin(e *proxy.LoginEvent) {
-	ctx := e.Player().Context()
-	log := logr.FromContextOrDiscard(ctx)
-
-	log.WithValues(
-		"player", e.Player(),
-	).Info("LoginEvent")
+	log.Info("Server ready, allowing connection")
+	p.servers.MarkServerReady(VANILLA)
 	e.Allow()
 }
 
 // HandlePlayerChooseInitialServer quickly selects the server
 // for the user (expects server to be in registry, else fails)
 func (p *MCProxy) HandlePlayerChooseInitialServer(e *proxy.PlayerChooseInitialServerEvent) {
-	ctx := e.Player().Context()
-	log := logr.FromContextOrDiscard(ctx)
-
-	log.WithValues(
-		"vanilla_server", p.Server(VANILLA),
-	).Info("ARE WE CHOOSING?")
 	e.SetInitialServer(p.Server(VANILLA))
-
-	log.Info("Hello")
 }
 
 // HandlePlayerConnected gets called when a player finishes the login

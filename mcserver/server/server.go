@@ -1,18 +1,28 @@
-package mcserver
+package server
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/jnorman-us/mcfly/fly/wirefmt"
-	"github.com/jnorman-us/mcfly/mcserver/config"
 )
 
 type Server struct {
-	config.ServerConfig
+	ServerConfig
 	VolumeID    string
 	MachineID   string
 	PrivateHost string
 	PrivateAddr net.Addr
+}
+
+func (s *Server) SetAddr(host string) error {
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("[%s]:25565", host))
+	if err != nil {
+		return err
+	}
+	s.PrivateHost = host
+	s.PrivateAddr = addr
+	return nil
 }
 
 func (s Server) Name() string {

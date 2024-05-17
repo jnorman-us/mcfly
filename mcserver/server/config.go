@@ -1,4 +1,4 @@
-package config
+package server
 
 import "github.com/jnorman-us/mcfly/fly/wirefmt"
 

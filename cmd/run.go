@@ -8,11 +8,13 @@ import (
 	"github.com/jnorman-us/mcfly/fly"
 	"github.com/jnorman-us/mcfly/mcproxy"
 	"github.com/jnorman-us/mcfly/mcserver"
+	"github.com/jnorman-us/mcfly/ping"
 	"github.com/spf13/cobra"
 	jconfig "go.minekube.com/gate/pkg/edition/java/config"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 	"go.minekube.com/gate/pkg/gate"
 	"go.minekube.com/gate/pkg/gate/config"
+	"go.minekube.com/gate/pkg/util/configutil"
 	"go.uber.org/zap"
 )
 
@@ -44,6 +46,7 @@ var runCmd = &cobra.Command{
 
 		default_config.Editions.Java.Config.Forwarding.Mode = jconfig.NoneForwardingMode
 		default_config.Editions.Java.Config.OnlineMode = false
+		default_config.Config.ConnectionTimeout = configutil.Duration(ping.WaitForServerDuration)
 		gate.Start(ctx, gate.WithConfig(default_config))
 	},
 }

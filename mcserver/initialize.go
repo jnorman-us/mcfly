@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/jnorman-us/mcfly/fly/wirefmt"
 	"github.com/jnorman-us/mcfly/mcserver/manager"
+	"github.com/jnorman-us/mcfly/mcserver/server"
 )
 
 func (m *CloudServerManager) Initialize(ctx context.Context) {
@@ -40,7 +41,7 @@ func (m *CloudServerManager) Initialize(ctx context.Context) {
 
 func (m *CloudServerManager) prepareServer(
 	ctx context.Context,
-	s *Server,
+	s *server.Server,
 	volumes map[string]wirefmt.Volume,
 	machines map[string]wirefmt.Machine,
 ) error {
@@ -75,7 +76,7 @@ func (m *CloudServerManager) prepareServer(
 	return nil
 }
 
-func (m *CloudServerManager) prepareVolume(ctx context.Context, s *Server) (*wirefmt.Volume, error) {
+func (m *CloudServerManager) prepareVolume(ctx context.Context, s *server.Server) (*wirefmt.Volume, error) {
 	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name())
 
 	input := s.CreateVolumeInput()
@@ -90,7 +91,7 @@ func (m *CloudServerManager) prepareVolume(ctx context.Context, s *Server) (*wir
 	return &volume, nil
 }
 
-func (m *CloudServerManager) prepareMachine(ctx context.Context, s *Server) (*wirefmt.Machine, error) {
+func (m *CloudServerManager) prepareMachine(ctx context.Context, s *server.Server) (*wirefmt.Machine, error) {
 	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name())
 
 	// create nonexistent machine

@@ -2,15 +2,17 @@ package manager
 
 import (
 	"context"
-
-	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
 type ServerManager interface {
 	CheckUserAuthorized(string, string) error
-	GetRunningServer(context.Context, string) (proxy.RegisteredServer, error)
+	CheckServerReady(context.Context, string) error
+	CheckServerStarted(context.Context, string) error
 
 	StartServer(context.Context, string) error
+	WaitForServer(context.Context, string) error
 	StopServer(context.Context, string) error
-	MarkServerHalted(context.Context, string)
+
+	MarkServerReady(string)
+	MarkServerHalted(string)
 }
