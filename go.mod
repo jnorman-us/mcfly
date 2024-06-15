@@ -24,6 +24,7 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.2.0 // indirect
 	github.com/knadh/koanf/providers/file v0.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/madflojo/tasks v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.1-0.20220423185008-bf980b35cac4 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect

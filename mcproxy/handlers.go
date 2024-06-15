@@ -31,7 +31,6 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 
 	err = p.servers.CheckServerReady(ctx, VANILLA)
 	if err == nil {
-		p.servers.MarkServerReady(VANILLA)
 		e.Allow()
 		return
 	}
@@ -62,7 +61,6 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 	}
 
 	log.Info("Server ready, allowing connection")
-	p.servers.MarkServerReady(VANILLA)
 	e.Allow()
 }
 
@@ -70,22 +68,6 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 // for the user (expects server to be in registry, else fails)
 func (p *MCProxy) HandlePlayerChooseInitialServer(e *proxy.PlayerChooseInitialServerEvent) {
 	e.SetInitialServer(p.Server(VANILLA))
-}
-
-// HandlePlayerConnected gets called when a player finishes the login
-// process and the server gets started. Nothing needs to be done here...
-func (p *MCProxy) HandlePlayerConnected(e *proxy.ServerPostConnectEvent) {
-	ctx := e.Player().Context()
-	log := logr.FromContextOrDiscard(ctx)
-
-	player := e.Player()
-	server := player.CurrentServer().Server()
-
-	log = log.WithValues(
-		"connected_players", server.Players(),
-		"server_info", server.ServerInfo(),
-	)
-	log.Info("Player has connected")
 }
 
 // HandlePlayerKicked is called when the underlying server goes down

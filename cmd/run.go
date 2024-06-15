@@ -6,6 +6,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
 	"github.com/jnorman-us/mcfly/fly"
+	"github.com/jnorman-us/mcfly/halter"
 	"github.com/jnorman-us/mcfly/mcproxy"
 	"github.com/jnorman-us/mcfly/mcserver"
 	"github.com/jnorman-us/mcfly/ping"
@@ -26,7 +27,8 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx := context.Background()
 		zapLogger := zap.Must(zap.NewDevelopment())
-		ctx = logr.NewContext(ctx, zapr.NewLogger(zapLogger))
+		log := zapr.NewLogger(zapLogger)
+		ctx = logr.NewContext(ctx, log)
 
 		cfg := parseConfig()
 		client := fly.NewFlyClient(cfg)
@@ -34,7 +36,8 @@ var runCmd = &cobra.Command{
 		proxy.Plugins = append(proxy.Plugins, proxy.Plugin{
 			Name: "MCFlyProxy",
 			Init: func(ctx context.Context, proxy *proxy.Proxy) error {
-				manager := mcserver.NewCloudServerManager(client, proxy)
+				hq := halter.New(client, log)
+				manager := mcserver.NewCloudServerManager(client, proxy, hq)
 
 				err := manager.FindCloudResources(ctx)
 				if err != nil {
