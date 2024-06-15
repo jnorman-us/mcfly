@@ -142,7 +142,11 @@ func (m *CloudServerManager) WaitForServer(ctx context.Context, name string) err
 
 func (m *CloudServerManager) PrepareHaltServer(name string) error {
 	server := m.servers[name]
-	return m.halter.Queue(server.MachineID)
+	err := m.halter.Queue(server.MachineID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", manager.ErrorSchedulingHalt, err)
+	}
+	return nil
 }
 
 func (m *CloudServerManager) CancelHaltServer(name string) {

@@ -2,7 +2,6 @@ package halter
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -47,7 +46,7 @@ func (h *halterQueue) Queue(machineID string) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrSchedulingTask, err)
+		return err
 	}
 	return nil
 }
@@ -64,7 +63,7 @@ func (h *halterQueue) halt(ctx context.Context, machineID string) error {
 
 	err := stopper.StopMachine(ctx, machineID)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrCloud, err)
+		return err
 	}
 	return nil
 }
