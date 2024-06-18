@@ -48,16 +48,12 @@ type CloudServerManager struct {
 }
 
 func NewCloudServerManager(cc cloud.CloudClient, r proxy.ServerRegistry, h halter.HalterQueue) *CloudServerManager {
-	csm := &CloudServerManager{
+	return &CloudServerManager{
 		servers:  default_servers,
 		cloud:    cc,
 		registry: r,
 		halter:   h,
 	}
-	for _, server := range csm.servers {
-		csm.registry.Register(server)
-	}
-	return csm
 }
 
 func (m *CloudServerManager) CheckUserAuthorized(name string, username string) error {

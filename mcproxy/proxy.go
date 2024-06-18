@@ -23,7 +23,7 @@ func NewMCProxy(p *proxy.Proxy, s manager.ServerManager) *MCProxy {
 func (p *MCProxy) Init(ctx context.Context) error {
 	event.Subscribe(p.Event(), 0, p.HandlePreLogin)
 	event.Subscribe(p.Event(), 0, p.HandlePlayerChooseInitialServer)
-	event.Subscribe(p.Event(), 0, p.HandlePlayerKicked)
+	event.Subscribe(p.Event(), 0, p.HandlePlayerDisconnected)
 
 	return nil
 }

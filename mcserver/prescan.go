@@ -51,3 +51,9 @@ func (m *CloudServerManager) FindCloudResources(ctx context.Context) error {
 	).Info("Infrastructure found for servers")
 	return nil
 }
+
+func (m *CloudServerManager) PopulateRegistry() {
+	for _, server := range m.servers {
+		m.registry.Register(server)
+	}
+}

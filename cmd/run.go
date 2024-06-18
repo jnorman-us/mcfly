@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -9,7 +10,6 @@ import (
 	"github.com/jnorman-us/mcfly/halter"
 	"github.com/jnorman-us/mcfly/mcproxy"
 	"github.com/jnorman-us/mcfly/mcserver"
-	"github.com/jnorman-us/mcfly/ping"
 	"github.com/spf13/cobra"
 	jconfig "go.minekube.com/gate/pkg/edition/java/config"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
@@ -43,13 +43,14 @@ var runCmd = &cobra.Command{
 				if err != nil {
 					zapLogger.Panic("Problem finding existing cloud resources", zap.Error(err))
 				}
+				manager.PopulateRegistry()
 				return mcproxy.NewMCProxy(proxy, manager).Init(ctx)
 			},
 		})
 
 		default_config.Editions.Java.Config.Forwarding.Mode = jconfig.NoneForwardingMode
 		default_config.Editions.Java.Config.OnlineMode = false
-		default_config.Config.ConnectionTimeout = configutil.Duration(ping.WaitForServerDuration)
+		default_config.Config.ConnectionTimeout = configutil.Duration(time.Second * 5)
 		gate.Start(ctx, gate.WithConfig(default_config))
 	},
 }

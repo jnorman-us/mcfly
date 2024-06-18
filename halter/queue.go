@@ -8,7 +8,7 @@ import (
 	"github.com/madflojo/tasks"
 )
 
-const HaltWaitDuration = time.Minute * 2
+const HaltWaitDuration = time.Second * 15
 
 type HalterQueue interface {
 	Queue(machineID string) error

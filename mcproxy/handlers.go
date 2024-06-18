@@ -2,8 +2,10 @@ package mcproxy
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/jnorman-us/mcfly/halter"
 	"github.com/jnorman-us/mcfly/mcserver/manager"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
@@ -14,6 +16,9 @@ const VANILLA = "vanilla"
 // proxy. We can take as much time as needed to spin up
 // the server if needed.
 func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
+	fmt.Println("Beginning wait")
+	<-e.Conn().Context().Done()
+	fmt.Println("WAIT IS OVER!")
 	ctx := e.Conn().Context()
 	log := logr.FromContextOrDiscard(ctx)
 	log = log.WithValues(
@@ -31,12 +36,12 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 
 	err = p.servers.CheckServerReady(ctx, VANILLA)
 	if err == nil {
+		p.servers.CancelHaltServer(VANILLA)
 		e.Allow()
 		return
 	}
 
 	err = p.servers.CheckServerStarted(ctx, VANILLA)
-	log.WithValues("TEST_ERR", err).Info("HELLO")
 	if errors.Is(err, manager.ErrorCloud) {
 		log.Error(err, "Problem checking if server started")
 		e.Deny(nil)
@@ -61,6 +66,7 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 	}
 
 	log.Info("Server ready, allowing connection")
+	p.servers.CancelHaltServer(VANILLA)
 	e.Allow()
 }
 
@@ -96,15 +102,23 @@ func (p *MCProxy) HandlePlayerKicked(e *proxy.KickedFromServerEvent) {
 func (p *MCProxy) HandlePlayerDisconnected(e *proxy.DisconnectEvent) {
 	ctx := e.Player().Context()
 	log := logr.FromContextOrDiscard(ctx)
-
 	log = log.WithValues(
 		"username", e.Player().Username(),
 		"server", VANILLA,
+		"login_status", e.LoginStatus(),
 	)
 	log.Info("Player has disconnected")
 
-	//err := p.servers.StopServer(ctx, VANILLA)
-	//if err != nil {
-	//	log.Error(err, "Problem stopping server")
-	//}
+	err := p.servers.CheckServerEmpty(ctx, VANILLA)
+	if errors.Is(err, manager.ErrorServerNotEmpty) {
+		log.V(1).Info("Server is not empty")
+		return
+	}
+
+	err = p.servers.PrepareHaltServer(VANILLA)
+	if err != nil {
+		log.Error(err, "Failed to prepare halting server")
+		return
+	}
+	log.Info("Server is preparing to halt", "wait_time", halter.HaltWaitDuration)
 }

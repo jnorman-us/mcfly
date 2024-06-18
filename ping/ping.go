@@ -24,14 +24,14 @@ func PingServer(ctx context.Context, s server.Server) (*mcpinger.ServerInfo, err
 func WaitForServerStatus(ctx context.Context, s server.Server, timeout time.Duration) (*mcpinger.ServerInfo, error) {
 	log := logr.FromContextOrDiscard(ctx)
 
-	ctx, _ = context.WithTimeout(ctx, timeout)
-
-	for range time.Tick(PingResponseDuration) {
+	ticker := time.NewTicker(PingResponseDuration)
+	defer ticker.Stop()
+	for {
 		select {
 		case <-ctx.Done():
 			log.V(1).Info("Timed out waiting for server!")
 			return nil, ctx.Err()
-		default:
+		case <-ticker.C:
 			info, err := PingServer(ctx, s)
 			if err != nil {
 				log.V(1).Info("No ping response, retrying...")
@@ -41,5 +41,4 @@ func WaitForServerStatus(ctx context.Context, s server.Server, timeout time.Dura
 			return info, nil
 		}
 	}
-	return nil, nil
 }
