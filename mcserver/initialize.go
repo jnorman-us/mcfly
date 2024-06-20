@@ -5,12 +5,25 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/jnorman-us/mcfly/fly/cloud"
 	"github.com/jnorman-us/mcfly/fly/wirefmt"
 	"github.com/jnorman-us/mcfly/mcserver/manager"
 	"github.com/jnorman-us/mcfly/mcserver/server"
 )
 
-func (m *CloudServerManager) Initialize(ctx context.Context) {
+type CloudServerInitializer struct {
+	servers map[string]*server.Server
+	cloud   cloud.CloudClient
+}
+
+func NewCloudServerInitializer(cc cloud.CloudClient) *CloudServerInitializer {
+	return &CloudServerInitializer{
+		servers: default_servers,
+		cloud:   cc,
+	}
+}
+
+func (m *CloudServerInitializer) Initialize(ctx context.Context) {
 	log := logr.FromContextOrDiscard(ctx)
 	log.Info("Initializing servers")
 
@@ -39,7 +52,7 @@ func (m *CloudServerManager) Initialize(ctx context.Context) {
 	}
 }
 
-func (m *CloudServerManager) prepareServer(
+func (m *CloudServerInitializer) prepareServer(
 	ctx context.Context,
 	s *server.Server,
 	volumes map[string]wirefmt.Volume,
@@ -76,7 +89,7 @@ func (m *CloudServerManager) prepareServer(
 	return nil
 }
 
-func (m *CloudServerManager) prepareVolume(ctx context.Context, s *server.Server) (*wirefmt.Volume, error) {
+func (m *CloudServerInitializer) prepareVolume(ctx context.Context, s *server.Server) (*wirefmt.Volume, error) {
 	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name())
 
 	input := s.CreateVolumeInput()
@@ -91,7 +104,7 @@ func (m *CloudServerManager) prepareVolume(ctx context.Context, s *server.Server
 	return &volume, nil
 }
 
-func (m *CloudServerManager) prepareMachine(ctx context.Context, s *server.Server) (*wirefmt.Machine, error) {
+func (m *CloudServerInitializer) prepareMachine(ctx context.Context, s *server.Server) (*wirefmt.Machine, error) {
 	log := logr.FromContextOrDiscard(ctx).WithValues("server", s.Name())
 
 	// create nonexistent machine

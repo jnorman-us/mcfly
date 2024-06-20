@@ -7,6 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/jnorman-us/mcfly/fly/cloud"
 	"github.com/jnorman-us/mcfly/fly/wirefmt"
+	"github.com/jnorman-us/mcfly/halter"
 	"github.com/jnorman-us/mcfly/mcserver/manager"
 	"github.com/jnorman-us/mcfly/mcserver/server"
 	"github.com/jnorman-us/mcfly/ping"
@@ -43,13 +44,15 @@ type CloudServerManager struct {
 	servers  map[string]*server.Server
 	registry proxy.ServerRegistry
 	cloud    cloud.CloudClient
+	halter   halter.HalterQueue
 }
 
-func NewCloudServerManager(cc cloud.CloudClient, r proxy.ServerRegistry) *CloudServerManager {
+func NewCloudServerManager(cc cloud.CloudClient, r proxy.ServerRegistry, h halter.HalterQueue) *CloudServerManager {
 	return &CloudServerManager{
 		servers:  default_servers,
 		cloud:    cc,
 		registry: r,
+		halter:   h,
 	}
 }
 
@@ -99,6 +102,14 @@ func (m *CloudServerManager) CheckServerStarted(ctx context.Context, name string
 	return nil
 }
 
+func (m *CloudServerManager) CheckServerEmpty(ctx context.Context, name string) error {
+	server := m.registry.Server(name)
+	if server.Players().Len() > 0 {
+		return manager.ErrorServerNotEmpty
+	}
+	return nil
+}
+
 func (m *CloudServerManager) StartServer(ctx context.Context, name string) error {
 	log := logr.FromContextOrDiscard(ctx)
 	server := m.servers[name]
@@ -125,27 +136,16 @@ func (m *CloudServerManager) WaitForServer(ctx context.Context, name string) err
 	return nil
 }
 
-func (m *CloudServerManager) StopServer(ctx context.Context, name string) error {
-	log := logr.FromContextOrDiscard(ctx)
+func (m *CloudServerManager) PrepareHaltServer(name string) error {
 	server := m.servers[name]
-
-	log.V(1).WithValues(
-		"machine_id", server.MachineID,
-	).Info("Stopping machine")
-
-	err := m.cloud.StopMachine(ctx, server.MachineID)
+	err := m.halter.Queue(server.MachineID)
 	if err != nil {
-		return fmt.Errorf("failed to stop machine: %w", err)
+		return fmt.Errorf("%w: %w", manager.ErrorSchedulingHalt, err)
 	}
-
-	m.registry.Unregister(server)
 	return nil
 }
 
-func (m *CloudServerManager) MarkServerReady(name string) {
-	m.registry.Register(m.servers[name])
-}
-
-func (m *CloudServerManager) MarkServerHalted(name string) {
-	m.registry.Unregister(m.servers[name])
+func (m *CloudServerManager) CancelHaltServer(name string) {
+	server := m.servers[name]
+	m.halter.Dequeue(server.MachineID)
 }

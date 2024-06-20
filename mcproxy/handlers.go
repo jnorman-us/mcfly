@@ -2,9 +2,13 @@ package mcproxy
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/go-logr/logr"
+	"github.com/jnorman-us/mcfly/halter"
 	"github.com/jnorman-us/mcfly/mcserver/manager"
+	"go.minekube.com/common/minecraft/color"
+	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
@@ -14,6 +18,8 @@ const VANILLA = "vanilla"
 // proxy. We can take as much time as needed to spin up
 // the server if needed.
 func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
+	e.Allow()
+	return
 	ctx := e.Conn().Context()
 	log := logr.FromContextOrDiscard(ctx)
 	log = log.WithValues(
@@ -31,13 +37,12 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 
 	err = p.servers.CheckServerReady(ctx, VANILLA)
 	if err == nil {
-		p.servers.MarkServerReady(VANILLA)
+		p.servers.CancelHaltServer(VANILLA)
 		e.Allow()
 		return
 	}
 
 	err = p.servers.CheckServerStarted(ctx, VANILLA)
-	log.WithValues("TEST_ERR", err).Info("HELLO")
 	if errors.Is(err, manager.ErrorCloud) {
 		log.Error(err, "Problem checking if server started")
 		e.Deny(nil)
@@ -62,30 +67,22 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 	}
 
 	log.Info("Server ready, allowing connection")
-	p.servers.MarkServerReady(VANILLA)
+	p.servers.CancelHaltServer(VANILLA)
 	e.Allow()
+}
+
+func (p *MCProxy) HandleLogin(e *proxy.LoginEvent) {
+	fmt.Println("Hello")
+	e.Deny(&component.Text{
+		Content: "An error occurred while running this command.",
+		S:       component.Style{Color: color.Red},
+	})
 }
 
 // HandlePlayerChooseInitialServer quickly selects the server
 // for the user (expects server to be in registry, else fails)
 func (p *MCProxy) HandlePlayerChooseInitialServer(e *proxy.PlayerChooseInitialServerEvent) {
 	e.SetInitialServer(p.Server(VANILLA))
-}
-
-// HandlePlayerConnected gets called when a player finishes the login
-// process and the server gets started. Nothing needs to be done here...
-func (p *MCProxy) HandlePlayerConnected(e *proxy.ServerPostConnectEvent) {
-	ctx := e.Player().Context()
-	log := logr.FromContextOrDiscard(ctx)
-
-	player := e.Player()
-	server := player.CurrentServer().Server()
-
-	log = log.WithValues(
-		"connected_players", server.Players(),
-		"server_info", server.ServerInfo(),
-	)
-	log.Info("Player has connected")
 }
 
 // HandlePlayerKicked is called when the underlying server goes down
@@ -114,15 +111,23 @@ func (p *MCProxy) HandlePlayerKicked(e *proxy.KickedFromServerEvent) {
 func (p *MCProxy) HandlePlayerDisconnected(e *proxy.DisconnectEvent) {
 	ctx := e.Player().Context()
 	log := logr.FromContextOrDiscard(ctx)
-
 	log = log.WithValues(
 		"username", e.Player().Username(),
 		"server", VANILLA,
+		"login_status", e.LoginStatus(),
 	)
 	log.Info("Player has disconnected")
 
-	//err := p.servers.StopServer(ctx, VANILLA)
-	//if err != nil {
-	//	log.Error(err, "Problem stopping server")
-	//}
+	err := p.servers.CheckServerEmpty(ctx, VANILLA)
+	if errors.Is(err, manager.ErrorServerNotEmpty) {
+		log.V(1).Info("Server is not empty")
+		return
+	}
+
+	err = p.servers.PrepareHaltServer(VANILLA)
+	if err != nil {
+		log.Error(err, "Failed to prepare halting server")
+		return
+	}
+	log.Info("Server is preparing to halt", "wait_time", halter.HaltWaitDuration)
 }
