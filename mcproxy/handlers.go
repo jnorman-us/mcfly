@@ -7,6 +7,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/jnorman-us/mcfly/halter"
 	"github.com/jnorman-us/mcfly/mcserver/manager"
+	"go.minekube.com/common/minecraft/color"
+	"go.minekube.com/common/minecraft/component"
 	"go.minekube.com/gate/pkg/edition/java/proxy"
 )
 
@@ -16,9 +18,8 @@ const VANILLA = "vanilla"
 // proxy. We can take as much time as needed to spin up
 // the server if needed.
 func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
-	fmt.Println("Beginning wait")
-	<-e.Conn().Context().Done()
-	fmt.Println("WAIT IS OVER!")
+	e.Allow()
+	return
 	ctx := e.Conn().Context()
 	log := logr.FromContextOrDiscard(ctx)
 	log = log.WithValues(
@@ -68,6 +69,14 @@ func (p *MCProxy) HandlePreLogin(e *proxy.PreLoginEvent) {
 	log.Info("Server ready, allowing connection")
 	p.servers.CancelHaltServer(VANILLA)
 	e.Allow()
+}
+
+func (p *MCProxy) HandleLogin(e *proxy.LoginEvent) {
+	fmt.Println("Hello")
+	e.Deny(&component.Text{
+		Content: "An error occurred while running this command.",
+		S:       component.Style{Color: color.Red},
+	})
 }
 
 // HandlePlayerChooseInitialServer quickly selects the server
